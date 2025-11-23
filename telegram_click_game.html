@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Click Target Game — Telegram WebApp</title>
+  <style>
+    :root{--bg:#10131a;--panel:#181d26;--accent:#4a8bff;--accent2:#ffa54a;--hit:#ff4a6e}
+    *{box-sizing:border-box}
+    body {
+      margin: 0;
+      background: var(--bg);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: Inter, Arial, sans-serif;
+      color: #eef2ff;
+      user-select: none;
+      -webkit-font-smoothing:antialiased;
+    }
+    #container { text-align:center; width:420px }
+    .btn {
+      padding: 12px 22px;
+      border: none;
+      border-radius: 12px;
+      font-size: 18px;
+      cursor: pointer;
+      transition: transform .12s ease, box-shadow .12s;
+    }
+    .btn:active{transform:translateY(1px)}
+    #startBtn{background:var(--accent);color:white}
+    #lbBtn{background:var(--accent2);color:#000;margin-left:10px}
+
+    #meta{display:flex;justify-content:center;gap:12px;align-items:center;margin:14px 0}
+    #score{font-size:20px}
+
+    #gameArea{
+      margin: 0 auto;
+      width: 400px;
+      height: 400px;
+      background: var(--panel);
+      border: 3px solid var(--accent);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      display: none;
+    }
+    #ball{
+      width: 44px;height:44px;border-radius:50%;position:absolute;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;
+      user-select:none;background:conic-gradient(from 90deg at 50% 50%, #ff9aa2,#ff4a6e);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.5);
+      transition: transform .07s linear,left .12s linear,top .12s linear;
+    }
+
+    #leaderboard{
+      display:none;margin-top:16px;width:400px;background:var(--panel);border:3px solid var(--accent2);
+      border-radius:12px;padding:12px;text-align:left;box-shadow:0 8px 30px rgba(0,0,0,0.45)
+    }
+    #leaderboard h2{margin:0 0 8px 0;font-size:18px}
+    .lb-row{padding:6px 4px;border-bottom:1px dashed rgba(255,255,255,0.03)}
+    .lb-row:last-child{border-bottom:none}
+    .small{font-size:13px;color:rgba(255,255,255,0.7)}
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div style="display:flex;justify-content:center;gap:8px;align-items:center;">
+      <button id="startBtn" class="btn">Старт</button>
+      <button id="lbBtn" class="btn">Лидерборд</button>
+    </div>
+
+    <div id="meta">
+      <div id="score">Очки: 0</div>
+      <div id="playerName" class="small">Игрок: —</div>
+    </div>
+
+    <div id="gameArea">
+      <div id="ball">+</div>
+    </div>
+
+    <div id="leaderboard">
+      <h2>Топ игроков</h2>
+      <div id="lbList">Загрузка...</div>
+    </div>
+  </div>
+
+  <script>
+    // --- Safety: Telegram WebApp may be undefined when opened outside Telegram ---
+    const tg = (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+    if (tg && typeof tg.expand === 'function') {
+      try { tg.expand(); } catch (e) { console.warn('tg.expand() failed', e); }
+    } else {
+      console.warn('Telegram WebApp API not detected. Running in fallback mode.');
+    }
+
+    // Elements
+    const startBtn = document.getElementById('startBtn');
+    const lbBtn = document.getElementById('lbBtn');
+    const gameArea = document.getElementById('gameArea');
+    const ball = document.getElementById('ball');
+    const scoreDisplay = document.getElementById('score');
+    const lbList = document.getElementById('lbList');
+    const leaderboard = document.getElementById('leaderboard');
+    const playerNameEl = document.getElementById('playerName');
+
+    // Game state
+    let score = 0;
+    let gameStarted = false;
+
+    // Get Telegram user name when available
+    function getTelegramUserName() {
+      if (!tg) return 'Гость';
+      const unsafe = tg.initDataUnsafe || {};
+      const user = unsafe.user || null;
+      if (user) {
+        // Prefer first_name + last_name or username
+        return [user.first_name, user.last_name].filter(Boolean).join(' ') || (user.username ? '@' + user.username : 'Игрок');
+      }
+      return 'Игрок';
+    }
+
+    // Update displayed player name
+    playerNameEl.textContent = 'Игрок: ' + getTelegramUserName();
+
+    function moveBall() {
+      const areaRect = gameArea.getBoundingClientRect();
+      const size = 44; // ball size
+      const x = Math.random() * (Math.max(0, areaRect.width - size));
+      const y = Math.random() * (Math.max(0, areaRect.height - size));
+      // use left/top to trigger css transitions
+      ball.style.left = Math.round(x) + 'px';
+      ball.style.top = Math.round(y) + 'px';
+    }
+
+    function setScore(v) {
+      score = v;
+      scoreDisplay.textContent = 'Очки: ' + score;
+    }
+
+    // Send score to backend (non-blocking). Replace URL with your server endpoint.
+    async function sendScoreToServer(newScore) {
+      // If no backend yet, just skip silently.
+      const ENDPOINT = null; // e.g. 'https://yourserver.com/score'
+      if (!ENDPOINT) return;
+      try {
+        await fetch(ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user: getTelegramUserName(), score: newScore, ts: Date.now() })
+        });
+      } catch (e) { console.warn('Failed to send score', e); }
+    }
+
+    // Click handlers
+    ball.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!gameStarted) return;
+      // small pop animation
+      ball.style.transform = 'scale(0.92)';
+      setTimeout(()=> ball.style.transform = '', 80);
+
+      setScore(score + 1);
+      moveBall();
+      // optimistic send
+      sendScoreToServer(score);
+    });
+
+    // click on empty area => penalty
+    gameArea.addEventListener('click', (e) => {
+      if (!gameStarted) return;
+      // if click target is ball, it's already handled above
+      if (e.target === ball) return;
+      setScore(score - 1);
+      sendScoreToServer(score);
+    });
+
+    startBtn.addEventListener('click', () => {
+      gameStarted = true;
+      setScore(0);
+      gameArea.style.display = 'block';
+      // position ball inside area after layout
+      setTimeout(moveBall, 50);
+    });
+
+    // --- Leaderboard logic ---
+    // Mock fetchLeaderboard — replace with real backend call. Backend should return array [{name,score}]
+    async function fetchLeaderboard() {
+      const ENDPOINT = null; // 'https://yourserver.com/leaderboard'
+      if (!ENDPOINT) {
+        // Mock data; also inject current user at top for demo
+        const selfName = getTelegramUserName();
+        return [
+          { name: selfName, score: score },
+          { name: 'Игрок_A', score: 42 },
+          { name: 'Игрок_B', score: 30 },
+          { name: 'Игрок_C', score: 18 }
+        ];
+      }
+      try {
+        const res = await fetch(ENDPOINT);
+        if (!res.ok) throw new Error('bad response');
+        return await res.json();
+      } catch (e) {
+        console.warn('Failed to fetch leaderboard', e);
+        return [];
+      }
+    }
+
+    async function updateLeaderboard() {
+      lbList.textContent = 'Загрузка...';
+      const data = await fetchLeaderboard();
+      if (!data || data.length === 0) {
+        lbList.innerHTML = '<div class="small">Нет данных</div>';
+        return;
+      }
+      lbList.innerHTML = data
+        .slice(0, 50)
+        .map((p, i) => `<div class="lb-row"><b>${i+1}.</b> ${escapeHtml(p.name)} <span style="float:right;">${p.score}</span></div>`)
+        .join('');
+    }
+
+    // toggle leaderboard visibility
+    lbBtn.addEventListener('click', () => {
+      leaderboard.style.display = leaderboard.style.display === 'none' ? 'block' : 'none';
+      // immediately refresh when opened
+      if (leaderboard.style.display === 'block') updateLeaderboard();
+    });
+
+    // Auto-update every 5 seconds, but only fetch when leaderboard is visible to avoid unnecessary calls
+    setInterval(() => { if (leaderboard.style.display === 'block') updateLeaderboard(); }, 5000);
+
+    // simple HTML escaping
+    function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    // Expose some helpers for debugging in non-telegram env
+    window.__clickGame = { getScore: ()=>score, setScore, moveBall };
+
+    // initial render
+    scoreDisplay.textContent = 'Очки: 0';
+  </script>
+</body>
+</html>
