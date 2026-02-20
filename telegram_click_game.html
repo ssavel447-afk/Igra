@@ -3,242 +3,405 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Click Target Game — Telegram WebApp</title>
+  <title>Neon RTX Tic-Tac-Toe</title>
   <style>
-    :root{--bg:#10131a;--panel:#181d26;--accent:#4a8bff;--accent2:#ffa54a;--hit:#ff4a6e}
-    *{box-sizing:border-box}
-    body {
+    :root {
+      --bg-1: #030712;
+      --bg-2: #130229;
+      --cyan: #29f0ff;
+      --pink: #ff3fd6;
+      --violet: #7f5bff;
+      --glass: rgba(255, 255, 255, 0.12);
+      --glass-border: rgba(255, 255, 255, 0.28);
+      --text: #eef8ff;
+    }
+
+    * {
+      box-sizing: border-box;
       margin: 0;
-      background: var(--bg);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      font-family: Inter, Arial, sans-serif;
-      color: #eef2ff;
-      user-select: none;
-      -webkit-font-smoothing:antialiased;
+      padding: 0;
+      font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     }
-    #container { text-align:center; width:420px }
-    .btn {
-      padding: 12px 22px;
-      border: none;
-      border-radius: 12px;
-      font-size: 18px;
-      cursor: pointer;
-      transition: transform .12s ease, box-shadow .12s;
-    }
-    .btn:active{transform:translateY(1px)}
-    #startBtn{background:var(--accent);color:white}
-    #lbBtn{background:var(--accent2);color:#000;margin-left:10px}
 
-    #meta{display:flex;justify-content:center;gap:12px;align-items:center;margin:14px 0}
-    #score{font-size:20px}
-
-    #gameArea{
-      margin: 0 auto;
-      width: 400px;
-      height: 400px;
-      background: var(--panel);
-      border: 3px solid var(--accent);
-      border-radius: 12px;
-      position: relative;
+    body {
+      min-height: 100vh;
+      color: var(--text);
       overflow: hidden;
-      display: none;
-    }
-    #ball{
-      width: 44px;height:44px;border-radius:50%;position:absolute;cursor:pointer;
-      display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;
-      user-select:none;background:conic-gradient(from 90deg at 50% 50%, #ff9aa2,#ff4a6e);
-      box-shadow: 0 6px 14px rgba(0,0,0,0.5);
-      transition: transform .07s linear,left .12s linear,top .12s linear;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 10% 10%, #2f0c5e 0%, transparent 35%),
+                  radial-gradient(circle at 80% 20%, #073864 0%, transparent 40%),
+                  radial-gradient(circle at 70% 80%, #4b093a 0%, transparent 35%),
+                  linear-gradient(120deg, var(--bg-1), var(--bg-2));
     }
 
-    #leaderboard{
-      display:none;margin-top:16px;width:400px;background:var(--panel);border:3px solid var(--accent2);
-      border-radius:12px;padding:12px;text-align:left;box-shadow:0 8px 30px rgba(0,0,0,0.45)
+    .bg-wave,
+    .bg-wave::before,
+    .bg-wave::after {
+      content: "";
+      position: fixed;
+      inset: -20% -30%;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      background: conic-gradient(from 0deg, transparent 0deg, rgba(41, 240, 255, 0.14) 70deg, transparent 140deg, rgba(255, 63, 214, 0.12) 210deg, transparent 300deg);
+      filter: blur(30px);
+      animation: drift 16s linear infinite;
     }
-    #leaderboard h2{margin:0 0 8px 0;font-size:18px}
-    .lb-row{padding:6px 4px;border-bottom:1px dashed rgba(255,255,255,0.03)}
-    .lb-row:last-child{border-bottom:none}
-    .small{font-size:13px;color:rgba(255,255,255,0.7)}
+
+    .bg-wave::before {
+      animation-duration: 22s;
+      transform: scale(1.2);
+      opacity: 0.8;
+    }
+
+    .bg-wave::after {
+      animation-duration: 28s;
+      transform: scale(0.82);
+      opacity: 0.55;
+    }
+
+    @keyframes drift {
+      from { transform: rotate(0deg) scale(1); }
+      to { transform: rotate(360deg) scale(1.08); }
+    }
+
+    .app {
+      width: min(92vw, 760px);
+      padding: 22px;
+      border-radius: 28px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(18px) saturate(160%);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                  0 0 30px rgba(127, 91, 255, 0.35);
+      position: relative;
+      z-index: 2;
+    }
+
+    .app::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.25) 45%, transparent 60%);
+      transform: translateX(-120%);
+      animation: glare 5s ease-in-out infinite;
+    }
+
+    @keyframes glare {
+      0%, 80% { transform: translateX(-120%); opacity: 0; }
+      88% { opacity: 1; }
+      100% { transform: translateX(130%); opacity: 0; }
+    }
+
+    .title {
+      text-align: center;
+      margin-bottom: 16px;
+      font-size: clamp(24px, 4vw, 36px);
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 8px rgba(41, 240, 255, 0.85), 0 0 24px rgba(255, 63, 214, 0.6);
+    }
+
+    .top {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .glass-card {
+      background: var(--glass);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: inset 0 0 14px rgba(255, 255, 255, 0.12);
+    }
+
+    .nick-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    input {
+      background: rgba(6, 15, 30, 0.75);
+      border: 1px solid rgba(146, 243, 255, 0.45);
+      border-radius: 12px;
+      color: var(--text);
+      padding: 10px 12px;
+      outline: none;
+      box-shadow: 0 0 16px rgba(41, 240, 255, 0.2);
+    }
+
+    input:focus { box-shadow: 0 0 22px rgba(255, 63, 214, 0.45); }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding: 11px 14px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
+      background: linear-gradient(120deg, rgba(15, 67, 112, 0.95), rgba(69, 22, 126, 0.95));
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 0 16px rgba(41, 240, 255, 0.38);
+    }
+
+    .btn:hover { transform: translateY(-1px) scale(1.01); }
+    .btn:active { transform: translateY(1px) scale(0.99); }
+
+    .btn.secondary {
+      background: linear-gradient(120deg, rgba(109, 26, 130, 0.95), rgba(30, 98, 143, 0.95));
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 16px rgba(255, 63, 214, 0.42);
+    }
+
+    .score {
+      display: grid;
+      gap: 7px;
+      font-size: 15px;
+    }
+
+    .score-line {
+      display: flex;
+      justify-content: space-between;
+      background: rgba(8, 16, 31, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 7px 9px;
+    }
+
+    .game {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .cell {
+      aspect-ratio: 1;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.18));
+      backdrop-filter: blur(4px);
+      cursor: pointer;
+      font-size: clamp(36px, 8vw, 58px);
+      color: #fff;
+      text-shadow: 0 0 24px currentColor;
+      transition: transform .1s ease, box-shadow .2s ease;
+      display: grid;
+      place-items: center;
+    }
+
+    .cell:hover { transform: translateY(-2px); }
+    .cell.x { color: var(--cyan); box-shadow: inset 0 0 30px rgba(41, 240, 255, 0.24), 0 0 15px rgba(41, 240, 255, 0.3); }
+    .cell.o { color: var(--pink); box-shadow: inset 0 0 30px rgba(255, 63, 214, 0.22), 0 0 15px rgba(255, 63, 214, 0.3); }
+
+    .status {
+      margin-top: 14px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 17px;
+      min-height: 26px;
+      text-shadow: 0 0 10px rgba(127, 91, 255, 0.8);
+    }
+
+    @media (max-width: 640px) {
+      .top { grid-template-columns: 1fr; }
+      .app { padding: 16px; border-radius: 20px; }
+    }
   </style>
 </head>
 <body>
-  <div id="container">
-    <div style="display:flex;justify-content:center;gap:8px;align-items:center;">
-      <button id="startBtn" class="btn">Старт</button>
-      <button id="lbBtn" class="btn">Лидерборд</button>
-    </div>
+  <div class="bg-wave"></div>
 
-    <div id="meta">
-      <div id="score">Очки: 0</div>
-      <div id="playerName" class="small">Игрок: —</div>
-    </div>
+  <main class="app">
+    <h1 class="title">Neon RTX Tic-Tac-Toe</h1>
 
-    <div id="gameArea">
-      <div id="ball">+</div>
-    </div>
+    <section class="top">
+      <div class="glass-card nick-wrap">
+        <label for="nickname">Ник игрока X</label>
+        <input id="nickname" maxlength="20" placeholder="Введи ник..." value="Игрок X" />
+        <div class="btn-row">
+          <button id="newRoundBtn" class="btn">Новый раунд</button>
+          <button id="resetAllBtn" class="btn secondary">Сбросить счёт</button>
+        </div>
+      </div>
 
-    <div id="leaderboard">
-      <h2>Топ игроков</h2>
-      <div id="lbList">Загрузка...</div>
-    </div>
-  </div>
+      <div class="glass-card score">
+        <div class="score-line"><span>Победы X (<span id="nameX">Игрок X</span>)</span><b id="scoreX">0</b></div>
+        <div class="score-line"><span>Победы O (Neon AI)</span><b id="scoreO">0</b></div>
+        <div class="score-line"><span>Ничьи</span><b id="drawScore">0</b></div>
+      </div>
+    </section>
+
+    <section id="board" class="game" aria-label="Игровое поле 3 на 3"></section>
+    <div id="status" class="status"></div>
+  </main>
 
   <script>
-    // --- Safety: Telegram WebApp may be undefined when opened outside Telegram ---
-    const tg = (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
-    if (tg && typeof tg.expand === 'function') {
-      try { tg.expand(); } catch (e) { console.warn('tg.expand() failed', e); }
-    } else {
-      console.warn('Telegram WebApp API not detected. Running in fallback mode.');
+    const boardEl = document.getElementById('board');
+    const nicknameInput = document.getElementById('nickname');
+    const nameXEl = document.getElementById('nameX');
+    const scoreXEl = document.getElementById('scoreX');
+    const scoreOEl = document.getElementById('scoreO');
+    const drawScoreEl = document.getElementById('drawScore');
+    const statusEl = document.getElementById('status');
+    const newRoundBtn = document.getElementById('newRoundBtn');
+    const resetAllBtn = document.getElementById('resetAllBtn');
+
+    const LINES = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+
+    let board = Array(9).fill('');
+    let currentPlayer = 'X';
+    let finished = false;
+    let score = { X: 0, O: 0, draw: 0 };
+
+    function sanitizeName(value) {
+      return value.trim().slice(0, 20) || 'Игрок X';
     }
 
-    // Elements
-    const startBtn = document.getElementById('startBtn');
-    const lbBtn = document.getElementById('lbBtn');
-    const gameArea = document.getElementById('gameArea');
-    const ball = document.getElementById('ball');
-    const scoreDisplay = document.getElementById('score');
-    const lbList = document.getElementById('lbList');
-    const leaderboard = document.getElementById('leaderboard');
-    const playerNameEl = document.getElementById('playerName');
+    function renderBoard() {
+      boardEl.innerHTML = '';
+      board.forEach((value, index) => {
+        const button = document.createElement('button');
+        button.className = `cell ${value ? value.toLowerCase() : ''}`;
+        button.type = 'button';
+        button.textContent = value;
+        button.setAttribute('aria-label', `Клетка ${index + 1}`);
+        button.addEventListener('click', () => onCellClick(index));
+        boardEl.appendChild(button);
+      });
+    }
 
-    // Game state
-    let score = 0;
-    let gameStarted = false;
-
-    // Get Telegram user name when available
-    function getTelegramUserName() {
-      if (!tg) return 'Гость';
-      const unsafe = tg.initDataUnsafe || {};
-      const user = unsafe.user || null;
-      if (user) {
-        // Prefer first_name + last_name or username
-        return [user.first_name, user.last_name].filter(Boolean).join(' ') || (user.username ? '@' + user.username : 'Игрок');
+    function checkWinner(state) {
+      for (const [a, b, c] of LINES) {
+        if (state[a] && state[a] === state[b] && state[b] === state[c]) {
+          return state[a];
+        }
       }
-      return 'Игрок';
+      return '';
     }
 
-    // Update displayed player name
-    playerNameEl.textContent = 'Игрок: ' + getTelegramUserName();
-
-    function moveBall() {
-      const areaRect = gameArea.getBoundingClientRect();
-      const size = 44; // ball size
-      const x = Math.random() * (Math.max(0, areaRect.width - size));
-      const y = Math.random() * (Math.max(0, areaRect.height - size));
-      // use left/top to trigger css transitions
-      ball.style.left = Math.round(x) + 'px';
-      ball.style.top = Math.round(y) + 'px';
+    function emptyIndices(state) {
+      return state.map((cell, idx) => cell === '' ? idx : -1).filter(idx => idx !== -1);
     }
 
-    function setScore(v) {
-      score = v;
-      scoreDisplay.textContent = 'Очки: ' + score;
+    function aiMove() {
+      const free = emptyIndices(board);
+      if (!free.length || finished) return;
+
+      for (const idx of free) {
+        const test = [...board];
+        test[idx] = 'O';
+        if (checkWinner(test) === 'O') return idx;
+      }
+
+      for (const idx of free) {
+        const test = [...board];
+        test[idx] = 'X';
+        if (checkWinner(test) === 'X') return idx;
+      }
+
+      if (free.includes(4)) return 4;
+      const corners = free.filter(i => [0, 2, 6, 8].includes(i));
+      if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
+      return free[Math.floor(Math.random() * free.length)];
     }
 
-    // Send score to backend (non-blocking). Replace URL with your server endpoint.
-    async function sendScoreToServer(newScore) {
-      // If no backend yet, just skip silently.
-      const ENDPOINT = null; // e.g. 'https://yourserver.com/score'
-      if (!ENDPOINT) return;
-      try {
-        await fetch(ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user: getTelegramUserName(), score: newScore, ts: Date.now() })
-        });
-      } catch (e) { console.warn('Failed to send score', e); }
+    function updateScoreUI() {
+      scoreXEl.textContent = score.X;
+      scoreOEl.textContent = score.O;
+      drawScoreEl.textContent = score.draw;
     }
 
-    // Click handlers
-    ball.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!gameStarted) return;
-      // small pop animation
-      ball.style.transform = 'scale(0.92)';
-      setTimeout(()=> ball.style.transform = '', 80);
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
 
-      setScore(score + 1);
-      moveBall();
-      // optimistic send
-      sendScoreToServer(score);
+    function endRound(winner) {
+      finished = true;
+      if (winner === 'X') {
+        score.X += 1;
+        setStatus(`⚡ ${sanitizeName(nicknameInput.value)} побеждает!`);
+      } else if (winner === 'O') {
+        score.O += 1;
+        setStatus('🤖 Neon AI победил. Попробуй реванш!');
+      } else {
+        score.draw += 1;
+        setStatus('✨ Ничья! Космический баланс.');
+      }
+      updateScoreUI();
+    }
+
+    function onCellClick(index) {
+      if (finished || board[index]) return;
+
+      board[index] = 'X';
+      renderBoard();
+
+      let winner = checkWinner(board);
+      if (winner) return endRound(winner);
+      if (!board.includes('')) return endRound('');
+
+      currentPlayer = 'O';
+      setStatus('Neon AI думает...');
+
+      setTimeout(() => {
+        const move = aiMove();
+        if (move !== undefined) {
+          board[move] = 'O';
+          renderBoard();
+        }
+
+        winner = checkWinner(board);
+        if (winner) return endRound(winner);
+        if (!board.includes('')) return endRound('');
+
+        currentPlayer = 'X';
+        setStatus(`Ходит ${sanitizeName(nicknameInput.value)} (X)`);
+      }, 280);
+    }
+
+    function newRound() {
+      board = Array(9).fill('');
+      currentPlayer = 'X';
+      finished = false;
+      renderBoard();
+      setStatus(`Ходит ${sanitizeName(nicknameInput.value)} (X)`);
+    }
+
+    nicknameInput.addEventListener('input', () => {
+      const name = sanitizeName(nicknameInput.value);
+      nameXEl.textContent = name;
+      if (!finished && currentPlayer === 'X') {
+        setStatus(`Ходит ${name} (X)`);
+      }
     });
 
-    // click on empty area => penalty
-    gameArea.addEventListener('click', (e) => {
-      if (!gameStarted) return;
-      // if click target is ball, it's already handled above
-      if (e.target === ball) return;
-      setScore(score - 1);
-      sendScoreToServer(score);
+    newRoundBtn.addEventListener('click', newRound);
+
+    resetAllBtn.addEventListener('click', () => {
+      score = { X: 0, O: 0, draw: 0 };
+      updateScoreUI();
+      newRound();
     });
 
-    startBtn.addEventListener('click', () => {
-      gameStarted = true;
-      setScore(0);
-      gameArea.style.display = 'block';
-      // position ball inside area after layout
-      setTimeout(moveBall, 50);
-    });
-
-    // --- Leaderboard logic ---
-    // Mock fetchLeaderboard — replace with real backend call. Backend should return array [{name,score}]
-    async function fetchLeaderboard() {
-      const ENDPOINT = null; // 'https://yourserver.com/leaderboard'
-      if (!ENDPOINT) {
-        // Mock data; also inject current user at top for demo
-        const selfName = getTelegramUserName();
-        return [
-          { name: selfName, score: score },
-          { name: 'Игрок_A', score: 42 },
-          { name: 'Игрок_B', score: 30 },
-          { name: 'Игрок_C', score: 18 }
-        ];
-      }
-      try {
-        const res = await fetch(ENDPOINT);
-        if (!res.ok) throw new Error('bad response');
-        return await res.json();
-      } catch (e) {
-        console.warn('Failed to fetch leaderboard', e);
-        return [];
-      }
-    }
-
-    async function updateLeaderboard() {
-      lbList.textContent = 'Загрузка...';
-      const data = await fetchLeaderboard();
-      if (!data || data.length === 0) {
-        lbList.innerHTML = '<div class="small">Нет данных</div>';
-        return;
-      }
-      lbList.innerHTML = data
-        .slice(0, 50)
-        .map((p, i) => `<div class="lb-row"><b>${i+1}.</b> ${escapeHtml(p.name)} <span style="float:right;">${p.score}</span></div>`)
-        .join('');
-    }
-
-    // toggle leaderboard visibility
-    lbBtn.addEventListener('click', () => {
-      leaderboard.style.display = leaderboard.style.display === 'none' ? 'block' : 'none';
-      // immediately refresh when opened
-      if (leaderboard.style.display === 'block') updateLeaderboard();
-    });
-
-    // Auto-update every 5 seconds, but only fetch when leaderboard is visible to avoid unnecessary calls
-    setInterval(() => { if (leaderboard.style.display === 'block') updateLeaderboard(); }, 5000);
-
-    // simple HTML escaping
-    function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-    // Expose some helpers for debugging in non-telegram env
-    window.__clickGame = { getScore: ()=>score, setScore, moveBall };
-
-    // initial render
-    scoreDisplay.textContent = 'Очки: 0';
+    nameXEl.textContent = sanitizeName(nicknameInput.value);
+    updateScoreUI();
+    newRound();
   </script>
 </body>
 </html>
